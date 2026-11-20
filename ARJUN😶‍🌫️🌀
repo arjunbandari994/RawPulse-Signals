@@ -1,0 +1,309 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RawPulse Signal — Raw Candlestick BUY / SELL Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif']
+          },
+          colors: {
+            voidBlack: '#000000',
+            surface: '#09090b',
+            cardBg: '#111115',
+            lineSoft: '#222229'
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body class="bg-voidBlack text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+  <!-- Top Header -->
+  <header class="sticky top-0 z-30 bg-voidBlack/95 backdrop-blur-md border-b border-lineSoft">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center text-emerald-400">
+          <i class="fa-solid fa-chart-candlestick text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">RawPulse Signal</h1>
+          <p class="text-[11px] sm:text-xs text-slate-400">Raw candlestick BUY / SELL analyzer — zero indicators, zero extra parameters</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="openKeyModalBtn" type="button" class="px-3 py-2 rounded-xl bg-cardBg hover:bg-zinc-800 border border-lineSoft text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition cursor-pointer">
+          <i class="fa-solid fa-key text-amber-400"></i>
+          <span id="keyStatusLabel">API Key</span>
+        </button>
+        <button id="resetBtn" type="button" class="px-3 py-2 rounded-xl bg-cardBg hover:bg-rose-950/60 border border-lineSoft hover:border-rose-500/40 text-xs font-semibold text-slate-300 hover:text-rose-200 flex items-center gap-1.5 transition cursor-pointer">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span class="hidden sm:inline">Reset</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast Container -->
+  <div id="toastArea" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- Left Column: Screenshot Upload, Paste, Quick Sample Charts & Analyze Action -->
+      <section class="lg:col-span-6 bg-surface border border-lineSoft rounded-2xl p-4 sm:p-5 shadow-2xl">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Raw Chart Screenshot</h2>
+            <p class="text-xs text-slate-400">Clean candlesticks only — pick a file, paste (<kbd class="px-1.5 py-0.5 rounded bg-cardBg border border-lineSoft text-slate-200 text-[11px]">Ctrl/Cmd+V</kbd>), or use a test chart</p>
+          </div>
+          <button id="removePhotoBtn" type="button" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition cursor-pointer">
+            <i class="fa-solid fa-trash mr-1"></i> Remove
+          </button>
+        </div>
+
+        <!-- Upload + Sample Test Buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+          <label for="chartFileInput" class="w-full py-2.5 px-3 rounded-xl bg-cardBg hover:bg-zinc-800 border border-lineSoft hover:border-emerald-400/50 text-xs font-bold text-white flex items-center justify-center gap-2 transition cursor-pointer">
+            <i class="fa-solid fa-folder-open text-emerald-400"></i>
+            <span>Choose Screenshot</span>
+          </label>
+          <button id="sampleBullBtn" type="button" class="w-full py-2.5 px-3 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-500/40 text-xs font-bold text-emerald-200 flex items-center justify-center gap-1.5 transition cursor-pointer">
+            <i class="fa-solid fa-arrow-trend-up text-emerald-400"></i>
+            <span>Sample Bullish ~3500</span>
+          </button>
+          <button id="sampleBearBtn" type="button" class="w-full py-2.5 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 border border-rose-500/40 text-xs font-bold text-rose-200 flex items-center justify-center gap-1.5 transition cursor-pointer">
+            <i class="fa-solid fa-arrow-trend-down text-rose-400"></i>
+            <span>Sample Bearish ~3520</span>
+          </button>
+        </div>
+
+        <!-- Hidden Native File Input -->
+        <input id="chartFileInput" type="file" accept="image/*" class="hidden" />
+
+        <!-- Drag & Drop / Click / Paste Zone -->
+        <div id="dropArea" tabindex="0" role="button" aria-label="Drop or paste raw candlestick chart screenshot" class="group relative cursor-pointer rounded-2xl border-2 border-dashed border-zinc-700 hover:border-emerald-400/80 focus:border-emerald-400 focus:outline-none bg-voidBlack min-h-[245px] sm:min-h-[290px] flex flex-col items-center justify-center p-4 text-center transition">
+          <div id="emptyDropState" class="flex flex-col items-center justify-center py-5 pointer-events-none">
+            <div class="w-14 h-14 rounded-2xl bg-surface group-hover:bg-emerald-500/15 border border-lineSoft group-hover:border-emerald-400/40 flex items-center justify-center mb-3 transition">
+              <i class="fa-solid fa-cloud-arrow-up text-2xl text-emerald-400"></i>
+            </div>
+            <p class="text-sm font-bold text-slate-100">Drop raw chart screenshot here or click to browse</p>
+            <p class="text-xs text-emerald-300/90 mt-1">Raw candles, swing highs/lows, wicks, and visible price scale</p>
+            <div class="mt-4 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
+              <span class="px-2.5 py-1 rounded-lg bg-surface border border-lineSoft"><i class="fa-solid fa-ban text-rose-400 mr-1"></i>No Indicators</span>
+              <span class="px-2.5 py-1 rounded-lg bg-surface border border-lineSoft"><i class="fa-regular fa-clipboard text-cyan-400 mr-1"></i>Ctrl / Cmd + V Paste</span>
+            </div>
+          </div>
+
+          <div id="previewBox" class="hidden w-full flex flex-col items-center">
+            <img id="previewImage" src="" alt="Raw candlestick chart preview" class="max-h-[300px] w-auto max-w-full rounded-xl object-contain border border-lineSoft shadow-lg" />
+            <span id="fileInfoBadge" class="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1 rounded-full">
+              <i class="fa-solid fa-circle-check"></i> Screenshot Ready
+            </span>
+          </div>
+        </div>
+
+        <!-- Shown ONLY if no price scale is detected on an uploaded image -->
+        <div id="fallbackPricePanel" class="hidden mt-3 rounded-xl bg-amber-950/30 border border-amber-500/40 p-3.5">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <p class="text-xs font-bold text-amber-300">No Price Scale Detected on Screenshot</p>
+              <p class="text-[11px] text-amber-100/80">Enter a reference chart price (for example <span class="font-semibold">3500</span> or <span class="font-semibold">3520</span>) so Entry, SL, and TP1–TP4 match your chart's scale.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input id="manualRefPriceInput" type="number" step="any" placeholder="Reference price e.g. 3500" class="flex-1 bg-voidBlack border border-amber-500/40 focus:border-amber-300 focus:outline-none rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-white" />
+            <button id="applyRefPriceBtn" type="button" class="px-3.5 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition cursor-pointer">
+              Set Price
+            </button>
+          </div>
+        </div>
+
+        <!-- Analyze Button -->
+        <button id="showSignalBtn" type="button" class="mt-4 w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 active:scale-[0.99] text-slate-950 font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition cursor-pointer">
+          <i class="fa-solid fa-bolt"></i>
+          <span>Analyze Chart</span>
+        </button>
+
+        <p id="modeHintText" class="mt-2.5 text-center text-[11px] text-slate-400">
+          Add a Gemini API key for live vision analysis, or run with instant local price-action analysis.
+        </p>
+      </section>
+
+      <!-- Right Column: Signal Verdict + Entry + SL + TP1..TP4 -->
+      <section class="lg:col-span-6 bg-surface border border-lineSoft rounded-2xl p-4 sm:p-5 shadow-2xl min-h-[410px] flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between border-b border-lineSoft pb-3 mb-4">
+            <div>
+              <h2 class="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-crosshairs text-emerald-400"></i>
+                Price Action Signal
+              </h2>
+              <p class="text-xs text-slate-400">BUY / SELL / WAIT, Entry, Stop Loss (SL), and TP1 – TP4</p>
+            </div>
+            <button id="copyResultBtn" type="button" class="hidden px-3 py-1.5 rounded-xl bg-cardBg hover:bg-zinc-800 border border-lineSoft text-xs font-semibold text-slate-200 transition cursor-pointer">
+              <i class="fa-regular fa-copy mr-1"></i> Copy
+            </button>
+          </div>
+
+          <!-- Waiting State -->
+          <div id="waitingState" class="py-14 px-4 text-center flex flex-col items-center justify-center">
+            <div class="w-16 h-16 rounded-2xl bg-cardBg border border-lineSoft flex items-center justify-center text-slate-500 mb-3">
+              <i class="fa-solid fa-arrow-right-arrow-left text-2xl"></i>
+            </div>
+            <p class="text-sm font-bold text-slate-200">No chart analyzed yet</p>
+            <p class="text-xs text-slate-400 max-w-sm mt-1">
+              Click <strong class="text-emerald-300">Sample Bullish ~3500</strong>, <strong class="text-rose-300">Sample Bearish ~3520</strong>, or upload/paste a raw candlestick chart screenshot, then click <strong class="text-emerald-400">Analyze Chart</strong>.
+            </p>
+          </div>
+
+          <!-- Loading State -->
+          <div id="loadingState" class="hidden py-14 px-4 text-center flex flex-col items-center justify-center">
+            <div class="w-12 h-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-400 animate-spin mb-3"></div>
+            <p class="text-sm font-bold text-white">Analyzing raw candlesticks &amp; price scale...</p>
+            <p class="text-xs text-slate-400 mt-1">Computing Entry, Stop Loss (SL), and TP1–TP4 from chart prices</p>
+          </div>
+
+          <!-- Signal Output Card -->
+          <div id="signalCard" class="hidden space-y-4">
+            <div id="verdictBanner" class="rounded-2xl p-4 border flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div id="verdictIcon" class="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black"></div>
+                <div>
+                  <span class="text-[11px] font-semibold opacity-80 block">Signal Verdict</span>
+                  <div class="flex items-center gap-2">
+                    <span id="verdictText" class="text-2xl sm:text-3xl font-black tracking-tight">BUY</span>
+                    <span id="verdictSubTag" class="text-xs font-bold px-2 py-0.5 rounded-md bg-black/30">LONG SETUP</span>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-[11px] opacity-80 block">Confidence</span>
+                <span id="confidenceVal" class="text-xl font-black">84%</span>
+              </div>
+            </div>
+
+            <!-- Entry / Stop Loss / Bias -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div class="bg-cardBg border border-lineSoft rounded-xl p-3">
+                <span class="text-[11px] text-slate-400 block">Entry</span>
+                <span id="entryVal" class="text-xs sm:text-sm font-extrabold text-white mt-0.5 block break-words">—</span>
+              </div>
+              <div class="bg-cardBg border border-rose-500/35 rounded-xl p-3">
+                <span class="text-[11px] font-bold text-rose-400 block">Stop Loss (SL)</span>
+                <span id="slVal" class="text-xs sm:text-sm font-extrabold text-rose-300 mt-0.5 block break-words">—</span>
+              </div>
+              <div class="bg-cardBg border border-lineSoft rounded-xl p-3">
+                <span class="text-[11px] text-cyan-300 block">Price Anchor</span>
+                <span id="anchorVal" class="text-xs sm:text-sm font-extrabold text-cyan-200 mt-0.5 block break-words">—</span>
+              </div>
+            </div>
+
+            <!-- Four Take Profit Targets: TP1, TP2, TP3, TP4 -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div class="bg-cardBg border border-emerald-500/35 rounded-xl p-3">
+                <span class="text-[11px] font-bold text-emerald-400 block">TP 1</span>
+                <span id="tp1Val" class="text-xs sm:text-sm font-extrabold text-emerald-200 mt-0.5 block break-words">—</span>
+              </div>
+              <div class="bg-cardBg border border-emerald-500/35 rounded-xl p-3">
+                <span class="text-[11px] font-bold text-emerald-400 block">TP 2</span>
+                <span id="tp2Val" class="text-xs sm:text-sm font-extrabold text-emerald-200 mt-0.5 block break-words">—</span>
+              </div>
+              <div class="bg-cardBg border border-emerald-500/35 rounded-xl p-3">
+                <span class="text-[11px] font-bold text-emerald-400 block">TP 3</span>
+                <span id="tp3Val" class="text-xs sm:text-sm font-extrabold text-emerald-200 mt-0.5 block break-words">—</span>
+              </div>
+              <div class="bg-cardBg border border-emerald-500/35 rounded-xl p-3">
+                <span class="text-[11px] font-bold text-emerald-400 block">TP 4</span>
+                <span id="tp4Val" class="text-xs sm:text-sm font-extrabold text-emerald-200 mt-0.5 block break-words">—</span>
+              </div>
+            </div>
+
+            <!-- Concise Price Action Notes -->
+            <div class="bg-cardBg border border-lineSoft rounded-xl p-3.5 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-cyan-300">Price Action Reasoning</span>
+                <span id="structureTag" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-surface border border-lineSoft text-slate-200">Raw Structure</span>
+              </div>
+              <p id="reasoningText" class="text-xs sm:text-sm text-slate-100 leading-relaxed"></p>
+              <ul id="pointList" class="space-y-1 text-xs text-slate-300 pt-1"></ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="mt-4 pt-3 border-t border-lineSoft/70 text-[11px] text-amber-300/90 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+          <span>For educational and paper-trading practice only. Always confirm market structure and manage risk carefully.</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Optional Gemini API Key Modal -->
+  <div id="keyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-surface border border-lineSoft rounded-2xl max-w-md w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-white"><i class="fa-solid fa-key text-amber-400 mr-1.5"></i> Gemini API Key</h3>
+        <button id="closeKeyModalBtn" type="button" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed mb-3">
+        Optional: enter a Gemini API key (saved locally in this browser) for live vision chart reading. Leave blank to run the instant local raw price-action engine.
+      </p>
+      <input id="apiKeyInput" type="password" placeholder="AIzaSy..." class="w-full bg-cardBg border border-lineSoft focus:border-emerald-400 focus:outline-none rounded-xl px-3 py-2.5 text-sm text-white mb-4" />
+      <div class="flex justify-end gap-2">
+        <button id="clearApiKeyBtn" type="button" class="px-3 py-2 rounded-xl bg-cardBg hover:bg-zinc-800 border border-lineSoft text-xs text-slate-300 cursor-pointer">Clear</button>
+        <button id="saveApiKeyBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs cursor-pointer">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "rawpulse_gemini_api_key_v1";
+    const GEMINI_MODEL = "gemini-2.5-flash";
+
+    const chartFileInput = document.getElementById("chartFileInput");
+    const sampleBullBtn = document.getElementById("sampleBullBtn");
+    const sampleBearBtn = document.getElementById("sampleBearBtn");
+    const dropArea = document.getElementById("dropArea");
+    const emptyDropState = document.getElementById("emptyDropState");
+    const previewBox = document.getElementById("previewBox");
+    const previewImage = document.getElementById("previewImage");
+    const fileInfoBadge = document.getElementById("fileInfoBadge");
+    const removePhotoBtn = document.getElementById("removePhotoBtn");
+    const fallbackPricePanel = document.getElementById("fallbackPricePanel");
+    const manualRefPriceInput = document.getElementById("manualRefPriceInput");
+    const applyRefPriceBtn = document.getElementById("applyRefPriceBtn");
+    const showSignalBtn = document.getElementById("showSignalBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const copyResultBtn = document.getElementById("copyResultBtn");
+    const modeHintText = document.getElementById("modeHintText");
+
+    const waitingState = document.getElementById("waitingState");
+    const loadingState = document.getElementById("loadingState");
+    const signalCard = document.getElementById("signalCard");
+
+    const verdictBanner = document.getElementById("verdictBanner");
+    const verdictIcon = document.getElementById("verdictIcon");
+    const verdictText = document.getElementById("verdictText");
+    const verdictSubTag = document.getElementById("verdictSubTag");
+    const confidenceVal = document.getElementById("confidenceVal");
+    const entryVal = document.getElementById("entryVal");
+    const slVal = document.getElementById("slVal");
+    const anchorVal = document.getElementById("anchorVal");
+    const tp1Val = document.getElementById("
